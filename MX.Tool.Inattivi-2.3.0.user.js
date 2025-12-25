@@ -119,7 +119,7 @@
 
       th.mx-pos, td.mx-pos, th.mx-zero, td.mx-zero, th.mx-neg, td.mx-neg { background: transparent !important; }
 
-      .mx-diff.mx-pos  { color:#2ea043 }
+      .mx-diff.mx-pos  { color:#098721 }
       .mx-diff.mx-zero { color:#ff9800 }
       .mx-diff.mx-neg  { color:#f44336 }
 
