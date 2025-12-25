@@ -10,8 +10,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
-// @updateURL    https://raw.githubusercontent.com/dani-csg/mx.tool.inattivi/main/MX.Tool.Inattivi-2.3.0.user.js
-// @downloadURL  https://raw.githubusercontent.com/dani-csg/mx.tool.inattivi/main/MX.Tool.Inattivi-2.3.0.user.js
+// @updateURL    https://github.com/dani-csg/mx.tool.inattivi/raw/refs/heads/main/MX.Tool.Inattivi-2.3.0.user.js
+// @downloadURL  https://github.com/dani-csg/mx.tool.inattivi/raw/refs/heads/main/MX.Tool.Inattivi-2.3.0.user.js
 // ==/UserScript==
 
 (function () {
