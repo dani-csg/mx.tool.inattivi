@@ -75,63 +75,119 @@
   const setThreshold = v=>GM_Set(K_THR, Math.max(0, toInt(v)));
 
   /* ---------- CSS ---------- */
-  (function addCss(){
-    if ($('#mx-rank-css')) return;
-    const st=document.createElement('style'); st.id='mx-rank-css';
-    st.textContent=`
-      #mx-rank-bar{
-        position:sticky; top:0; z-index:2147483647; background:#111; color:#eee;
-        padding:.35rem .6rem; border-bottom:1px solid #333;
-        font:13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      }
-      #mx-rank-bar .mx-wrap{
-        display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;
-      }
-      #mx-rank-bar button,
-      #mx-rank-bar select,
-      #mx-rank-bar input[type="number"]{
-        padding:.28rem .55rem;
-        border:1px solid #666;
-        background:#1d1d1d;
-        color:#eee;
-        border-radius:6px;
-        font-size:12px;
-        cursor:pointer;
-        box-sizing:border-box;
-        transition:background .15s ease, transform .05s ease, box-shadow .15s ease;
-      }
-      #mx-rank-bar button:hover,
-      #mx-rank-bar select:hover,
-      #mx-rank-bar input[type="number"]:hover{
-        background:#222;
-      }
-      #mx-rank-bar button:active{
-        transform:translateY(1px) scale(.98);
-        box-shadow:0 0 0 1px rgba(255,255,255,.15) inset;
-      }
-      #mx-thr { width:7rem; }
+(function addCss(){
+  if ($('#mx-rank-css')) return;
 
-      .mx-diff{ display:block; font-size:11px; margin-top:2px; opacity:.95 }
+  const st = document.createElement('style');
+  st.id = 'mx-rank-css';
+  st.textContent = `
+    /* ===== TOP BAR ===== */
+    #mx-rank-bar{
+      position:sticky;
+      top:0;
+      z-index:2147483647;
+      background:#111;
+      color:#eee;
+      padding:.35rem .6rem;
+      border-bottom:1px solid #333;
+      font:13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    }
+    #mx-rank-bar .mx-wrap{
+      display:flex;
+      gap:.5rem;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    #mx-rank-bar button,
+    #mx-rank-bar select,
+    #mx-rank-bar input[type="number"]{
+      padding:.28rem .55rem;
+      border:1px solid #666;
+      background:#1d1d1d;
+      color:#eee;
+      border-radius:6px;
+      font-size:12px;
+      cursor:pointer;
+      box-sizing:border-box;
+      transition:background .15s ease, transform .05s ease, box-shadow .15s ease;
+    }
+    #mx-rank-bar button:hover,
+    #mx-rank-bar select:hover,
+    #mx-rank-bar input[type="number"]:hover{
+      background:#222;
+    }
+    #mx-rank-bar button:active{
+      transform:translateY(1px) scale(.98);
+      box-shadow:0 0 0 1px rgba(255,255,255,.15) inset;
+    }
+    #mx-thr { width:7rem; }
 
-      tr.mx-row-pos  > td, tr.mx-row-pos  > th { background: rgba(46,160,67,.32) !important; }
-      tr.mx-row-zero > td, tr.mx-row-zero > th { background: rgba(255,167,38,.22) !important; }
-      tr.mx-row-neg  > td, tr.mx-row-neg  > th { background: rgba(244,67,54,.32) !important; }
+    /* ===== DIFF LABELS ===== */
+    .mx-diff{
+      display:block;
+      font-size:11px;
+      margin-top:2px;
+      opacity:.95;
+    }
+    .mx-diff.mx-pos  { color:#098721; }
+    .mx-diff.mx-zero { color:#ff9800; }
+    .mx-diff.mx-neg  { color:#f44336; }
 
-      th.mx-pos, td.mx-pos, th.mx-zero, td.mx-zero, th.mx-neg, td.mx-neg { background: transparent !important; }
+    .mx-aka{
+      display:block;
+      font-size:11px;
+      color:#777;
+      margin-top:2px;
+    }
 
-      .mx-diff.mx-pos  { color:#098721 }
-      .mx-diff.mx-zero { color:#ff9800 }
-      .mx-diff.mx-neg  { color:#f44336 }
+    /* =========================================================
+       FINAL ROW-TINT FIX (Vendetta Zebra-Striping Override)
+       ========================================================= */
 
-      th.mx-rank-pos, td.mx-rank-pos{ background:rgba(46,160,67,.18)!important }
-      th.mx-rank-zero, td.mx-rank-zero{ background:rgba(255,167,38,.18)!important }
-      th.mx-rank-neg,  td.mx-rank-neg{ background:rgba(244,67,54,.18)!important }
+    /* POSITIV (aktiv) */
+    table.tabla-clasificacion tr.mx-row-pos td,
+    table.tabla-clasificacion tr.mx-row-pos th{
+      background-color: rgba(80, 140, 90, 0.22) !important;
+    }
 
-      .mx-aka{ display:block; font-size:11px; color:#bbb; margin-top:2px }
-      .mx-hide-diffs .mx-diff, .mx-hide-diffs .mx-aka{ display:none!important }
-    `;
-    document.head.appendChild(st);
-  })();
+    /* ZERO / SEMI-AKTIV */
+    table.tabla-clasificacion tr.mx-row-zero td,
+    table.tabla-clasificacion tr.mx-row-zero th{
+      background-color: rgba(210, 160, 90, 0.20) !important;
+    }
+
+    /* NEGATIV (rückläufig) */
+    table.tabla-clasificacion tr.mx-row-neg td,
+    table.tabla-clasificacion tr.mx-row-neg th{
+      background-color: rgba(150, 70, 70, 0.22) !important;
+    }
+
+    /* Zebra-Striping gezielt neutralisieren */
+    table.tabla-clasificacion tr.mx-row-pos td,
+    table.tabla-clasificacion tr.mx-row-zero td,
+    table.tabla-clasificacion tr.mx-row-neg td{
+      background-image:none !important;
+    }
+
+    /* Alte cell-basierte Marker neutral halten */
+    th.mx-pos, td.mx-pos,
+    th.mx-zero, td.mx-zero,
+    th.mx-neg, td.mx-neg{
+      background:transparent !important;
+    }
+
+    /* Rank-Movement (optional, dezent) */
+    th.mx-rank-pos, td.mx-rank-pos{ background:rgba(80,140,90,.15)!important; }
+    th.mx-rank-zero, td.mx-rank-zero{ background:rgba(210,160,90,.15)!important; }
+    th.mx-rank-neg,  td.mx-rank-neg{  background:rgba(150,70,70,.15)!important; }
+
+    .mx-hide-diffs .mx-diff,
+    .mx-hide-diffs .mx-aka{
+      display:none!important;
+    }
+  `;
+  document.head.appendChild(st);
+})();
 
   /* ---------- Top bar helpers ---------- */
   function removeTopBar(){
