@@ -1,15 +1,17 @@
 // ==UserScript==
 // @name         MX.Tool.Inattivi
 // @namespace    mx.tool.inattivi
-// @version      2.3.0
+// @version      2.3.1
 // @description  Tool inattivi per vendettagame.es
-// @author       mx. (modded)
+// @author       mx.
 // @match        *://vendettagame.es/clasificacion*
 // @match        *://*.vendettagame.es/clasificacion*
 // @run-at       document-end
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
+// @updateURL
+// @downloadURL
 // ==/UserScript==
 
 (function () {
