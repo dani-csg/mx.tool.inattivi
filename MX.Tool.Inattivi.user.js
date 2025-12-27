@@ -25,7 +25,7 @@
      /clasificacion?x=...
   ========================================================== */
   function isRankingPage(){
-    return /^\/clasificacion\/?$/.test(location.pathname);
+    return location.pathname.replace(/\/+$/, '') === '/clasificacion';
   }
 
   if (!isRankingPage()) return;
