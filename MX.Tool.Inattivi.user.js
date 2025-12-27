@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MX.Tool.Inattivi
 // @namespace    mx.tool.inattivi
-// @version      2.4.1
+// @version      2.4.2
 // @description  Tool inattivi per vendettagame.es (solo clasificacion / jugadores)
 // @author       mx.
 // @match        *://vendettagame.es/clasificacion*
@@ -18,11 +18,9 @@
   'use strict';
 
   /* ==========================================================
-     PAGE GUARD  (⭐ WICHTIGSTE ÄNDERUNG ⭐)
-     Script läuft NUR auf:
-     /clasificacion
-     /clasificacion/
-     /clasificacion?x=...
+     PAGE GUARD – NUR JUGADORES (/clasificacion)
+     ✔ erlaubt ?page=, #hash
+     ❌ blockiert /familias /economia /robo
   ========================================================== */
   function isRankingPage(){
     return location.pathname.replace(/\/+$/, '') === '/clasificacion';
@@ -32,7 +30,7 @@
 
   /* ---------- config / debug ---------- */
   const DEBUG = false;
-  const log = (...a)=>{ if (DEBUG) console.log('[MX-Inattivi-VG]', ...a); };
+  const log = (...a)=>{ if (DEBUG) console.log('[MX-Inattivi]', ...a); };
 
   /* ---------- utils ---------- */
   const $  = (s, r=document)=>r.querySelector(s);
@@ -82,7 +80,7 @@
         position:sticky;top:0;z-index:2147483647;
         background:#111;color:#eee;padding:.35rem .6rem;
         border-bottom:1px solid #333;
-        font:13px/1.2 system-ui;
+        font:13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
       }
       #mx-rank-bar .mx-wrap{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
       #mx-rank-bar button,#mx-rank-bar select,#mx-rank-bar input{
@@ -102,21 +100,39 @@
   })();
 
   /* ==========================================================
-     TABLE DETECTION
+     TOP BAR
+  ========================================================== */
+  function ensureTopBar(){
+    if ($('#mx-rank-bar')) return;
+    const bar=document.createElement('div');
+    bar.id='mx-rank-bar';
+    bar.innerHTML=`
+      <div class="mx-wrap">
+        <strong>pwrd by mx.</strong>
+        <button id="mx-save">Save Ranking</button>
+        <select id="mx-sel"></select>
+        <input id="mx-thr" type="number" placeholder="Delta">
+        <button id="mx-apply">Set Delta</button>
+        <button id="mx-del">Delete</button>
+        <button id="mx-clear">Delete All</button>
+        <span id="mx-meta"></span>
+      </div>`;
+    document.body.prepend(bar);
+  }
+
+  /* ==========================================================
+     TABLE + DATA
   ========================================================== */
   function findRankingTable(){
     return $('table.tabla-clasificacion');
   }
 
-  /* ==========================================================
-     DATA EXTRACTION
-  ========================================================== */
   function extractPlayers(table){
-    const rows = $$('tbody tr', table);
+    const rows=$$('tbody tr',table);
     const out=[];
-    for (const tr of rows){
+    for(const tr of rows){
       const c=[...tr.cells];
-      if (c.length<6) continue;
+      if(c.length<6) continue;
       const link=c[1]?.querySelector('a[href*="/jugador/"]');
       const name=link?.textContent.trim();
       const id=link?.href.match(/\/jugador\/(\d+)/)?.[1]||name;
@@ -130,7 +146,7 @@
   }
 
   /* ==========================================================
-     SNAPSHOT LOGIC
+     SNAPSHOT
   ========================================================== */
   function snapshotFromDom(){
     const table=findRankingTable();
@@ -143,7 +159,7 @@
   }
 
   /* ==========================================================
-     ANNOTATION
+     ANNOTATE
   ========================================================== */
   function annotate(players,base){
     const thr=getThreshold();
@@ -155,7 +171,9 @@
       span.className='mx-diff '+(diff>0?'mx-pos':diff<0?'mx-neg':'mx-zero');
       span.textContent='['+sign(diff)+']';
       p.cells.total.appendChild(span);
-      p.row.classList.add(diff>thr?'mx-row-pos':diff<0?'mx-row-neg':'mx-row-zero');
+      p.row.classList.add(
+        diff>thr?'mx-row-pos':diff<0?'mx-row-neg':'mx-row-zero'
+      );
     });
   }
 
@@ -163,6 +181,7 @@
      RUN
   ========================================================== */
   function run(){
+    ensureTopBar();
     const table=findRankingTable();
     if(!table) return;
     const players=extractPlayers(table);
