@@ -81,7 +81,10 @@
     st.textContent = `
       /* ===== TOP BAR ===== */
       #mx-rank-bar{
-        position:relative;
+        position:fixed;
+        top:0;
+        left:0;
+        right:0;
         z-index:2147483647;
         background:#111;
         color:#eee;
