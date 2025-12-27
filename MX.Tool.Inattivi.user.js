@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MX.Tool.Inattivi
 // @namespace    mx.tool.inattivi
-// @version      2.4.3
+// @version      2.5.0
 // @description  Tool inattivi per vendettagame.es (solo clasificacion / jugadores)
 // @author       mx.
 // @match        *://vendettagame.es/clasificacion*
@@ -17,21 +17,13 @@
 (function () {
   'use strict';
 
-  /* ==========================================================
-     PAGE GUARD – NUR /clasificacion (JUGADORES)
-     ✔ erlaubt ?page= / #hash
-     ❌ blockiert /familias /economia /robo
-  ========================================================== */
+  /* ================= PAGE GUARD ================= */
   function isRankingPage(){
     return location.pathname.replace(/\/+$/, '') === '/clasificacion';
   }
   if (!isRankingPage()) return;
 
-  /* ---------- config / debug ---------- */
-  const DEBUG = false;
-  const log = (...a)=>{ if (DEBUG) console.log('[MX-Inattivi]', ...a); };
-
-  /* ---------- utils ---------- */
+  /* ================= UTILS ================= */
   const $  = (s, r=document)=>r.querySelector(s);
   const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
 
@@ -39,71 +31,79 @@
   const K_ALL   = `mx_rank_snapshots__${hostKey}`;
   const K_BASE  = `mx_rank_baseline_id__${hostKey}`;
   const K_THR   = `mx_rank_total_threshold__${hostKey}`;
-  const MAX_SNAPSHOTS = 50;
 
   const GM_Get=(k,d)=>{try{return GM_getValue(k,d);}catch{return d;}};
-  const GM_Set=(k,v)=>{try{GM_setValue(k,v);}catch(e){ console.warn(e); }};
-  const GM_Del=(k)=>{try{GM_deleteValue(k);}catch{}};
+  const GM_Set=(k,v)=>{try{GM_setValue(k,v);}catch{}};
 
-  // robust: 1.005 / 14.602 / 10,000 / 10.000
-  const toInt = (t)=>{
-    if (t==null) return 0;
-    const s = String(t)
-      .replace(/\[[^\]]*]/g,'')
-      .replace(/\s+/g,'')
-      .replace(/[^0-9,\.\-]/g,'');
-    if (!s) return 0;
-    return parseInt(s.replace(/[.,]/g,''),10) || 0;
-  };
+  const toInt = t => parseInt(String(t).replace(/[^0-9\-]/g,''),10)||0;
+  const sign  = n => n>0?`+${n}`:`${n}`;
 
-  const sign = n => n>0?`+${n}`:`${n}`;
-  const fmt  = ts=>new Date(ts).toLocaleString();
-
-  const loadAll = ()=>{ const a=GM_Get(K_ALL, []); return Array.isArray(a)?a:[]; };
-  const saveAll = a=>GM_Set(K_ALL, a);
-  const getBaselineId = ()=>GM_Get(K_BASE, null);
-  const setBaselineId = id=>GM_Set(K_BASE, id);
-  const getSnapshotById = id => id ? loadAll().find(s=>String(s.id)===String(id))||null : null;
-
-  const getThreshold = ()=>Math.max(0, toInt(GM_Get(K_THR, 0)));
-  const setThreshold = v=>GM_Set(K_THR, Math.max(0, toInt(v)));
-
-  /* ==========================================================
-     CSS (wie früher)
-  ========================================================== */
+  /* ================= CSS ================= */
   (function addCss(){
     if ($('#mx-rank-css')) return;
-    const st = document.createElement('style');
-    st.id = 'mx-rank-css';
-    st.textContent = `
+    const st=document.createElement('style');
+    st.id='mx-rank-css';
+    st.textContent=`
       #mx-rank-bar{
         position:sticky;top:0;z-index:2147483647;
-        background:#111;color:#eee;padding:.35rem .6rem;
+        background:#111;color:#eee;
+        padding:.4rem .6rem;
         border-bottom:1px solid #333;
         font:13px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
       }
-      #mx-rank-bar .mx-wrap{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
-      #mx-rank-bar button,#mx-rank-bar select,#mx-rank-bar input{
-        padding:.28rem .55rem;border:1px solid #666;background:#1d1d1d;
-        color:#eee;border-radius:6px;font-size:12px;cursor:pointer;
+      #mx-rank-bar .mx-wrap{
+        display:flex;gap:.5rem;align-items:center;flex-wrap:wrap
       }
 
-      .mx-diff{display:block;font-size:11px;margin-top:2px;opacity:.95}
+      #mx-rank-bar button,
+      #mx-rank-bar select,
+      #mx-rank-bar input{
+        padding:.32rem .6rem;
+        border:1px solid #555;
+        background:#1c1c1c;
+        color:#eee;
+        border-radius:6px;
+        font-size:12px;
+        cursor:pointer;
+        transition:
+          background .15s ease,
+          border-color .15s ease,
+          box-shadow .15s ease,
+          transform .05s ease;
+      }
+
+      #mx-rank-bar button:hover,
+      #mx-rank-bar select:hover,
+      #mx-rank-bar input:hover{
+        background:#262626;
+        border-color:#888;
+        box-shadow:0 0 0 1px rgba(255,255,255,.12);
+      }
+
+      #mx-rank-bar button:active{
+        transform:translateY(1px);
+      }
+
+      #mx-rank-bar input{
+        width:90px;
+      }
+
+      .mx-diff{display:block;font-size:11px;margin-top:2px}
       .mx-diff.mx-pos{color:#098721}
       .mx-diff.mx-zero{color:#ff9800}
       .mx-diff.mx-neg{color:#f44336}
-      .mx-aka{display:block;font-size:11px;color:#777;margin-top:2px}
 
-      table.tabla-clasificacion tr.mx-row-pos td{background:rgba(80,140,90,.22)!important}
-      table.tabla-clasificacion tr.mx-row-zero td{background:rgba(210,160,90,.20)!important}
-      table.tabla-clasificacion tr.mx-row-neg td{background:rgba(150,70,70,.22)!important}
+      table.tabla-clasificacion tr.mx-row-pos td{
+        background:rgba(80,140,90,.22)!important}
+      table.tabla-clasificacion tr.mx-row-zero td{
+        background:rgba(210,160,90,.20)!important}
+      table.tabla-clasificacion tr.mx-row-neg td{
+        background:rgba(150,70,70,.22)!important}
     `;
     document.head.appendChild(st);
   })();
 
-  /* ==========================================================
-     TOP BAR (wie früher)
-  ========================================================== */
+  /* ================= TOP BAR ================= */
   function ensureTopBar(){
     if ($('#mx-rank-bar')) return;
 
@@ -112,137 +112,104 @@
     bar.innerHTML=`
       <div class="mx-wrap">
         <strong>pwrd by mx.</strong>
-        <button id="mx-save">Save Ranking</button>
-        <select id="mx-sel"></select>
-        <input id="mx-thr" type="number" placeholder="Delta">
-        <button id="mx-apply">Set Delta</button>
-        <button id="mx-del">Delete</button>
-        <button id="mx-clear">Delete All</button>
+
+        <button id="mx-save" title="Salva classifica">
+          Save Ranking
+        </button>
+
+        <select id="mx-sel" title="Scegli classifica"></select>
+
+        <input id="mx-thr" type="number"
+          title="Inserisci delta semiinattivi"
+          placeholder="Delta">
+
+        <button id="mx-apply" title="Salva delta">
+          Set Delta
+        </button>
+
+        <button id="mx-del" title="Cancella scelta">
+          Delete
+        </button>
+
+        <button id="mx-clear" title="Cancella tutto">
+          Delete All
+        </button>
+
         <span id="mx-meta"></span>
-      </div>`;
+      </div>
+    `;
     document.body.prepend(bar);
   }
 
-  /* ==========================================================
-     TABLE DETECTION
-  ========================================================== */
+  /* ================= TABLE ================= */
   function findRankingTable(){
     return $('table.tabla-clasificacion');
   }
 
-  /* ==========================================================
-     EXTRACT PLAYERS – FULL
-  ========================================================== */
   function extractPlayers(table){
-    const rows = $$('tbody tr', table);
+    const rows=$$('tbody tr',table);
     const out=[];
-
-    for (const tr of rows){
+    for(const tr of rows){
       const c=[...tr.cells];
-      if (c.length < 7) continue;
-
+      if(c.length<7) continue;
       const link=c[1]?.querySelector('a[href*="/jugador/"]');
       const name=(link?link.textContent:c[1].textContent).trim();
-      const id=link?.href.match(/\/jugador\/(\d+)/)?.[1] || 'name:'+name;
+      const id=link?.href.match(/\/jugador\/(\d+)/)?.[1]||name;
 
       out.push({
-        id,name,row:tr,
+        id,row:tr,
         cells:{
-          rank:c[0], name:c[1], training:c[2],
-          buildings:c[3], troops:c[4],
-          total:c[5], buildingsCount:c[6]
+          rank:c[0],training:c[2],
+          buildings:c[3],troops:c[4],
+          total:c[5],buildingsCount:c[6]
         },
         values:{
-          rank:toInt(c[0]?.textContent),
-          training:toInt(c[2]?.textContent),
-          buildings:toInt(c[3]?.textContent),
-          troops:toInt(c[4]?.textContent),
-          total:toInt(c[5]?.textContent),
-          buildingsCount:toInt(c[6]?.textContent)
+          rank:toInt(c[0].textContent),
+          training:toInt(c[2].textContent),
+          buildings:toInt(c[3].textContent),
+          troops:toInt(c[4].textContent),
+          total:toInt(c[5].textContent),
+          buildingsCount:toInt(c[6].textContent)
         }
       });
     }
     return out;
   }
 
-  /* ==========================================================
-     SNAPSHOT
-  ========================================================== */
-  function snapshotFromDom(){
-    const table=findRankingTable();
-    if(!table) return null;
-
-    const players=extractPlayers(table);
-    const map={};
-    players.forEach(p=>map[p.id]={...p.values,name:p.name});
-    const ts=Date.now();
-    return {id:ts,ts,players:map};
-  }
-
-  /* ==========================================================
-     ANNOTATION – FULL (alle Spalten)
-  ========================================================== */
   function annotate(players,base){
-    const thr=getThreshold();
-
-    for(const p of players){
+    players.forEach(p=>{
       const prev=base.players[p.id];
-      if(!prev) continue;
+      if(!prev) return;
 
-      const metrics=[
-        ['rank',true],
-        ['training',false],
-        ['buildings',false],
-        ['troops',false],
-        ['total',false],
-        ['buildingsCount',false]
-      ];
-
-      let rowDone=false;
-
-      for(const [key,isRank] of metrics){
-        const td=p.cells[key];
+      for(const k in p.values){
+        const diff=p.values[k]-prev[k];
+        const td=p.cells[k];
         if(!td) continue;
 
-        const cur=p.values[key];
-        const old=prev[key] ?? 0;
-        const diff=cur-old;
-
         const span=document.createElement('span');
-        let cls;
-
-        if(diff===0) cls='mx-zero';
-        else if(isRank) cls=(diff<0?'mx-pos':'mx-neg');
-        else cls=(diff>0?'mx-pos':'mx-neg');
-
-        span.className='mx-diff '+cls;
+        span.className='mx-diff '+(diff>0?'mx-pos':diff<0?'mx-neg':'mx-zero');
         span.textContent='['+sign(diff)+']';
         td.appendChild(span);
 
-        if(key==='total' && !rowDone){
-          if(diff>0){
-            p.row.classList.add(diff>=thr?'mx-row-pos':'mx-row-zero');
-          } else if(diff<0){
-            p.row.classList.add('mx-row-neg');
-          } else {
-            p.row.classList.add('mx-row-zero');
-          }
-          rowDone=true;
+        if(k==='total'){
+          p.row.classList.add(
+            diff>0?'mx-row-pos':diff<0?'mx-row-neg':'mx-row-zero'
+          );
         }
       }
-    }
+    });
   }
 
-  /* ==========================================================
-     RUN
-  ========================================================== */
+  /* ================= RUN ================= */
   function run(){
     ensureTopBar();
     const table=findRankingTable();
     if(!table) return;
 
     const players=extractPlayers(table);
-    const base=getSnapshotById(getBaselineId());
+    const all=GM_Get(K_ALL,[]);
+    const baseId=GM_Get(K_BASE,null);
+    const base=all.find(s=>String(s.id)===String(baseId));
     if(!base) return;
 
     annotate(players,base);
