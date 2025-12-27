@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MX.Tool.Inattivi
 // @namespace    mx.tool.inattivi
-// @version      2.6.1
+// @version      2.6.2
 // @description  Tool inattivi per vendettagame.es (solo /clasificacion jugadores) – full features + hover + tooltip IT
 // @author       mx.
 // @match        *://vendettagame.es/clasificacion*
