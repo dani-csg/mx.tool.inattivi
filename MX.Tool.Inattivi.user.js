@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MX.Tool.Inattivi
 // @namespace    mx.tool.inattivi
-// @version      2.4.2
+// @version      2.4.3
 // @description  Tool inattivi per vendettagame.es (solo clasificacion / jugadores)
 // @author       mx.
 // @match        *://vendettagame.es/clasificacion*
@@ -18,14 +18,13 @@
   'use strict';
 
   /* ==========================================================
-     PAGE GUARD – NUR JUGADORES (/clasificacion)
-     ✔ erlaubt ?page=, #hash
+     PAGE GUARD – NUR /clasificacion (JUGADORES)
+     ✔ erlaubt ?page= / #hash
      ❌ blockiert /familias /economia /robo
   ========================================================== */
   function isRankingPage(){
     return location.pathname.replace(/\/+$/, '') === '/clasificacion';
   }
-
   if (!isRankingPage()) return;
 
   /* ---------- config / debug ---------- */
@@ -46,6 +45,7 @@
   const GM_Set=(k,v)=>{try{GM_setValue(k,v);}catch(e){ console.warn(e); }};
   const GM_Del=(k)=>{try{GM_deleteValue(k);}catch{}};
 
+  // robust: 1.005 / 14.602 / 10,000 / 10.000
   const toInt = (t)=>{
     if (t==null) return 0;
     const s = String(t)
@@ -69,7 +69,7 @@
   const setThreshold = v=>GM_Set(K_THR, Math.max(0, toInt(v)));
 
   /* ==========================================================
-     CSS
+     CSS (wie früher)
   ========================================================== */
   (function addCss(){
     if ($('#mx-rank-css')) return;
@@ -87,11 +87,13 @@
         padding:.28rem .55rem;border:1px solid #666;background:#1d1d1d;
         color:#eee;border-radius:6px;font-size:12px;cursor:pointer;
       }
-      .mx-diff{display:block;font-size:11px;margin-top:2px}
+
+      .mx-diff{display:block;font-size:11px;margin-top:2px;opacity:.95}
       .mx-diff.mx-pos{color:#098721}
       .mx-diff.mx-zero{color:#ff9800}
       .mx-diff.mx-neg{color:#f44336}
       .mx-aka{display:block;font-size:11px;color:#777;margin-top:2px}
+
       table.tabla-clasificacion tr.mx-row-pos td{background:rgba(80,140,90,.22)!important}
       table.tabla-clasificacion tr.mx-row-zero td{background:rgba(210,160,90,.20)!important}
       table.tabla-clasificacion tr.mx-row-neg td{background:rgba(150,70,70,.22)!important}
@@ -100,10 +102,11 @@
   })();
 
   /* ==========================================================
-     TOP BAR
+     TOP BAR (wie früher)
   ========================================================== */
   function ensureTopBar(){
     if ($('#mx-rank-bar')) return;
+
     const bar=document.createElement('div');
     bar.id='mx-rank-bar';
     bar.innerHTML=`
@@ -121,25 +124,42 @@
   }
 
   /* ==========================================================
-     TABLE + DATA
+     TABLE DETECTION
   ========================================================== */
   function findRankingTable(){
     return $('table.tabla-clasificacion');
   }
 
+  /* ==========================================================
+     EXTRACT PLAYERS – FULL
+  ========================================================== */
   function extractPlayers(table){
-    const rows=$$('tbody tr',table);
+    const rows = $$('tbody tr', table);
     const out=[];
-    for(const tr of rows){
+
+    for (const tr of rows){
       const c=[...tr.cells];
-      if(c.length<6) continue;
+      if (c.length < 7) continue;
+
       const link=c[1]?.querySelector('a[href*="/jugador/"]');
-      const name=link?.textContent.trim();
-      const id=link?.href.match(/\/jugador\/(\d+)/)?.[1]||name;
+      const name=(link?link.textContent:c[1].textContent).trim();
+      const id=link?.href.match(/\/jugador\/(\d+)/)?.[1] || 'name:'+name;
+
       out.push({
         id,name,row:tr,
-        cells:{total:c[5]},
-        values:{total:toInt(c[5]?.textContent)}
+        cells:{
+          rank:c[0], name:c[1], training:c[2],
+          buildings:c[3], troops:c[4],
+          total:c[5], buildingsCount:c[6]
+        },
+        values:{
+          rank:toInt(c[0]?.textContent),
+          training:toInt(c[2]?.textContent),
+          buildings:toInt(c[3]?.textContent),
+          troops:toInt(c[4]?.textContent),
+          total:toInt(c[5]?.textContent),
+          buildingsCount:toInt(c[6]?.textContent)
+        }
       });
     }
     return out;
@@ -151,30 +171,66 @@
   function snapshotFromDom(){
     const table=findRankingTable();
     if(!table) return null;
+
     const players=extractPlayers(table);
     const map={};
-    players.forEach(p=>map[p.id]={total:p.values.total});
+    players.forEach(p=>map[p.id]={...p.values,name:p.name});
     const ts=Date.now();
     return {id:ts,ts,players:map};
   }
 
   /* ==========================================================
-     ANNOTATE
+     ANNOTATION – FULL (alle Spalten)
   ========================================================== */
   function annotate(players,base){
     const thr=getThreshold();
-    players.forEach(p=>{
-      const prev=base?.players?.[p.id];
-      if(!prev) return;
-      const diff=p.values.total-prev.total;
-      const span=document.createElement('span');
-      span.className='mx-diff '+(diff>0?'mx-pos':diff<0?'mx-neg':'mx-zero');
-      span.textContent='['+sign(diff)+']';
-      p.cells.total.appendChild(span);
-      p.row.classList.add(
-        diff>thr?'mx-row-pos':diff<0?'mx-row-neg':'mx-row-zero'
-      );
-    });
+
+    for(const p of players){
+      const prev=base.players[p.id];
+      if(!prev) continue;
+
+      const metrics=[
+        ['rank',true],
+        ['training',false],
+        ['buildings',false],
+        ['troops',false],
+        ['total',false],
+        ['buildingsCount',false]
+      ];
+
+      let rowDone=false;
+
+      for(const [key,isRank] of metrics){
+        const td=p.cells[key];
+        if(!td) continue;
+
+        const cur=p.values[key];
+        const old=prev[key] ?? 0;
+        const diff=cur-old;
+
+        const span=document.createElement('span');
+        let cls;
+
+        if(diff===0) cls='mx-zero';
+        else if(isRank) cls=(diff<0?'mx-pos':'mx-neg');
+        else cls=(diff>0?'mx-pos':'mx-neg');
+
+        span.className='mx-diff '+cls;
+        span.textContent='['+sign(diff)+']';
+        td.appendChild(span);
+
+        if(key==='total' && !rowDone){
+          if(diff>0){
+            p.row.classList.add(diff>=thr?'mx-row-pos':'mx-row-zero');
+          } else if(diff<0){
+            p.row.classList.add('mx-row-neg');
+          } else {
+            p.row.classList.add('mx-row-zero');
+          }
+          rowDone=true;
+        }
+      }
+    }
   }
 
   /* ==========================================================
@@ -184,9 +240,11 @@
     ensureTopBar();
     const table=findRankingTable();
     if(!table) return;
+
     const players=extractPlayers(table);
     const base=getSnapshotById(getBaselineId());
     if(!base) return;
+
     annotate(players,base);
   }
 
